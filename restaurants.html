@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurants - DIGIDINE</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div style="display: flex; align-items: center;">
+            <a href="index.html" class="logo">🍽️ DIGIDINE</a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="restaurants.html">Restaurants</a></li>
+                <li><a href="leftover-food.html">Leftover Food</a></li>
+                <li>
+                    <a href="cart.html" class="cart-icon">
+                        🛒 Cart
+                        <span class="cart-badge" style="display: none;">0</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Order Sidebar -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleOrderSidebar()"></div>
+    <div class="order-sidebar" id="order-sidebar">
+        <div class="order-sidebar-header">
+            <h2>My Orders</h2>
+            <button class="order-sidebar-close" onclick="toggleOrderSidebar()">×</button>
+        </div>
+        <div class="order-sidebar-content" id="order-sidebar-content">
+            <!-- Orders will be rendered here -->
+        </div>
+    </div>
+
+    <div class="container">
+        <h1 style="margin-bottom: 2rem;">All Restaurants</h1>
+        
+        <div class="filters">
+            <input type="text" id="search-box" class="search-box" placeholder="Search restaurants...">
+            <button class="filter-btn active" data-cuisine="all">All</button>
+            <button class="filter-btn" data-cuisine="North Indian">North Indian</button>
+            <button class="filter-btn" data-cuisine="Italian">Italian</button>
+            <button class="filter-btn" data-cuisine="Japanese">Japanese</button>
+            <button class="filter-btn" data-cuisine="American">American</button>
+            <button class="filter-btn" data-cuisine="Thai">Thai</button>
+            <button class="filter-btn" data-cuisine="Mexican">Mexican</button>
+        </div>
+
+        <div id="restaurants-container" class="cards-grid"></div>
+        <div id="empty-state" class="empty-state" style="display: none;">
+            <div class="empty-state-icon">🔍</div>
+            <h3>No restaurants found</h3>
+            <p>Try adjusting your search or filters</p>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script>
+        // Order sidebar functions
+        function toggleOrderSidebar() {
+            const sidebar = document.getElementById('order-sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+            if (sidebar.classList.contains('active')) {
+                renderOrders();
+            }
+        }
+
+        function renderOrders() {
+            const orders = Orders.getAllOrders();
+            const container = document.getElementById('order-sidebar-content');
+            const badge = document.getElementById('order-badge');
+            
+            // Update badge
+            const activeOrders = Orders.getActiveOrders();
+            if (badge) {
+                const count = activeOrders.length;
+                badge.textContent = count;
+                badge.style.display = count > 0 ? 'flex' : 'none';
+            }
+
+            if (orders.length === 0) {
+                container.innerHTML = `
+                    <div class="order-sidebar-empty">
+                        <div class="order-sidebar-empty-icon">📦</div>
+                        <h3>No orders yet</h3>
+                        <p>Your orders will appear here</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = orders.map(order => {
+                const statusSteps = [
+                    { key: 'cooking', label: 'Cooking', icon: '👨‍🍳' },
+                    { key: 'shipped', label: 'Shipped', icon: '🚚' },
+                    { key: 'delivered', label: 'Delivered', icon: '✓' }
+                ];
+
+                const currentStatusIndex = statusSteps.findIndex(s => s.key === order.status);
+                
+                return `
+                    <div class="order-item">
+                        <div class="order-item-header">
+                            <div>
+                                <div class="order-item-id">Order #${order.id}</div>
+                                <div class="order-item-date">${formatDate(order.createdAt)}</div>
+                            </div>
+                        </div>
+                        <div class="order-item-items">
+                            ${order.items.map(item => `
+                                <div class="order-item-food">
+                                    <span class="order-item-food-name">${item.name}</span>
+                                    <span class="order-item-food-quantity">× ${item.quantity}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="order-status">
+                            <div class="order-status-label">Order Status</div>
+                            <div class="order-status-tracker">
+                                ${statusSteps.map((step, index) => {
+                                    const isActive = index === currentStatusIndex;
+                                    const isCompleted = index < currentStatusIndex;
+                                    return `
+                                        <div class="status-step ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}">
+                                            <div class="status-icon"></div>
+                                            <div class="status-text">${step.label}</div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                        <div class="order-item-total">
+                            <span>Total</span>
+                            <span>${formatCurrency(order.total)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update order badge on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const activeOrders = Orders.getActiveOrders();
+            const badge = document.getElementById('order-badge');
+            if (badge) {
+                const count = activeOrders.length;
+                badge.textContent = count;
+                badge.style.display = count > 0 ? 'flex' : 'none';
+            }
+        });
+
+        let allRestaurants = [];
+        let filteredRestaurants = [];
+
+        async function loadRestaurants() {
+            try {
+                allRestaurants = await API.get('data/restaurants.json');
+                filteredRestaurants = [...allRestaurants];
+                renderRestaurants();
+            } catch (error) {
+                console.error('Error loading restaurants:', error);
+            }
+        }
+
+        function renderRestaurants() {
+            const container = document.getElementById('restaurants-container');
+            const emptyState = document.getElementById('empty-state');
+
+            if (filteredRestaurants.length === 0) {
+                container.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            container.style.display = 'grid';
+            emptyState.style.display = 'none';
+
+            container.innerHTML = filteredRestaurants.map(restaurant => `
+                <div class="card" onclick="window.location.href='restaurant-detail.html?id=${restaurant.id}'">
+                    <img src="${restaurant.image}" alt="${restaurant.name}" class="card-image">
+                    <div class="card-content">
+                        <h3 class="card-title">${restaurant.name}</h3>
+                        <p class="card-subtitle">${restaurant.cuisine} • ${restaurant.description}</p>
+                        <div class="card-info">
+                            <span class="rating">⭐ ${restaurant.rating}</span>
+                            <span>${restaurant.deliveryTime}</span>
+                        </div>
+                        <div class="card-footer">
+                            <span>Min. ₹${restaurant.minOrder}</span>
+                            <span class="price">Delivery: ₹${restaurant.deliveryFee}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Filter by cuisine
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+
+                const cuisine = this.dataset.cuisine;
+                if (cuisine === 'all') {
+                    filteredRestaurants = [...allRestaurants];
+                } else {
+                    filteredRestaurants = allRestaurants.filter(r => r.cuisine === cuisine);
+                }
+
+                applySearchFilter();
+            });
+        });
+
+        // Search functionality
+        function applySearchFilter() {
+            const searchTerm = document.getElementById('search-box').value.toLowerCase();
+            if (searchTerm) {
+                filteredRestaurants = filteredRestaurants.filter(restaurant =>
+                    restaurant.name.toLowerCase().includes(searchTerm) ||
+                    restaurant.cuisine.toLowerCase().includes(searchTerm) ||
+                    restaurant.description.toLowerCase().includes(searchTerm)
+                );
+            }
+            renderRestaurants();
+        }
+
+        document.getElementById('search-box').addEventListener('input', function() {
+            const activeFilter = document.querySelector('.filter-btn.active');
+            const cuisine = activeFilter ? activeFilter.dataset.cuisine : 'all';
+            
+            if (cuisine === 'all') {
+                filteredRestaurants = [...allRestaurants];
+            } else {
+                filteredRestaurants = allRestaurants.filter(r => r.cuisine === cuisine);
+            }
+            
+            applySearchFilter();
+        });
+
+        loadRestaurants();
+    </script>
+</body>
+</html>
+
