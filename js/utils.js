@@ -301,6 +301,14 @@ const SavedDishes = {
   }
 };
 
+// Mobile top navigation (3-dot menu)
+function toggleTopNav() {
+  const mobileNav = document.getElementById('mobile-nav');
+  if (mobileNav) {
+    mobileNav.classList.toggle('active');
+  }
+}
+
 // Initialize cart badge on page load
 document.addEventListener('DOMContentLoaded', function() {
   Cart.updateBadge();
