@@ -17,13 +17,20 @@
                 <li><a href="index.html">Home</a></li>
                 <li><a href="restaurants.html">Restaurants</a></li>
                 <li><a href="leftover-food.html">Leftover Food</a></li>
-                <li>
-                    <a href="cart.html" class="cart-icon">
-                        🛒 Cart
-                        <span class="cart-badge" style="display: none;">0</span>
-                    </a>
-                </li>
             </ul>
+            <a href="cart.html" class="cart-icon">
+                🛒 Cart
+                <span class="cart-badge" style="display: none;">0</span>
+            </a>
+            <div class="kebab-menu" onclick="toggleTopNav()">
+                <span class="kebab-icon">⋮</span>
+            </div>
+            <div class="mobile-nav" id="mobile-nav">
+                <a href="index.html">Home</a>
+                <a href="restaurants.html">Restaurants</a>
+                <a href="leftover-food.html">Leftover Food</a>
+                <a href="cart.html">Cart</a>
+            </div>
         </div>
     </nav>
 
